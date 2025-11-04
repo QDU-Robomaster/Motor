@@ -54,7 +54,7 @@ class Motor : public LibXR::Application {
     UNUSED(hw);
     UNUSED(app);
     UNUSED(can_bus_name);
-    app.Register(*this);
+    app.Register(motor_);
   }
 
   void OnMonitor() override {}
@@ -69,17 +69,6 @@ class Motor : public LibXR::Application {
   }
 
   /**
-   * @brief 更新指定索引的电机状态
-   * @param index 电机索引
-   */
-  void Update(size_t index) {
-    auto* motor = GetMotor(index);
-    if (motor != nullptr) {
-      motor->Update();
-    }
-  }
-
-  /**
    * @brief 设置指定电机的电流控制
    * @param index 电机索引
    * @param current 归一化电流值 [-1.0, 1.0]
@@ -89,6 +78,10 @@ class Motor : public LibXR::Application {
     if (motor != nullptr) {
       motor->CurrentControl(current);
     }
+  }
+
+  void Update() {
+    motor_.Update();
   }
 
   /**

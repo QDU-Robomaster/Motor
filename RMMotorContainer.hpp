@@ -46,9 +46,8 @@ depends: []
 #define MOTOR_ENC_RES (8192)  /* 电机编码器分辨率 */
 #define MOTOR_CUR_RES (16384) /* 电机转矩电流分辨率 */
 
-
 class RMMotorContainer : public LibXR::Application {
-public:
+ public:
   static inline uint8_t motor_tx_buff_[MOTOR_CTRL_ID_NUMBER][8];
 
   static inline uint8_t motor_tx_flag_[MOTOR_CTRL_ID_NUMBER];
@@ -74,7 +73,7 @@ public:
   } Param;
 
   class RMMotor {
-  public:
+   public:
     struct ConfigParam {
       uint32_t id_feedback;
       uint32_t id_control;
@@ -95,43 +94,25 @@ public:
      */
     RMMotor(RMMotorContainer* container, const Param& param,
             const ConfigParam& config)
-      : param_(param), config_param_(config), container_(container) {
-    }
+        : param_(param), config_param_(config), container_(container) {}
 
     /**
      * @brief 解码来自CAN总线的电机反馈数据包
      * @param pack 包含电机反馈数据的CAN数据包
      */
     void Decode(LibXR::CAN::ClassicPack& pack) {
-      uint16_t raw_angle = static_cast<uint16_t>(
-        (pack.data[0] << 8) | pack.data[1]);
-      int16_t raw_current = static_cast<int16_t>(
-        (pack.data[4] << 8) | pack.data[5]);
+      uint16_t raw_angle =
+          static_cast<uint16_t>((pack.data[0] << 8) | pack.data[1]);
+      int16_t raw_current =
+          static_cast<int16_t>((pack.data[4] << 8) | pack.data[5]);
 
       this->feedback_.rotor_abs_angle =
-          LibXR::CycleValue<float>(raw_angle) / MOTOR_ENC_RES * M_2PI;
+          static_cast<float>(raw_angle) / MOTOR_ENC_RES * M_2PI;
       this->feedback_.rotor_rotation_speed =
           static_cast<int16_t>((pack.data[2] << 8) | pack.data[3]);
       this->feedback_.torque_current =
           static_cast<float>(raw_current) * M3508_MAX_ABS_CUR / MOTOR_CUR_RES;
       this->feedback_.temp = pack.data[6];
-    }
-
-    /**
-     * @brief 更新电机状态，处理接收队列中的所有反馈数据包
-     * @return bool 总是返回 true
-     */
-    bool Update() {
-      LibXR::CAN::ClassicPack pack;
-
-      while (container_->recv_.Pop(pack) == ErrorCode::OK) {
-        if ((pack.id == config_param_.id_feedback) &&
-            (Model::MOTOR_NONE != this->param_.model)) {
-          this->Decode(pack);
-        }
-      }
-
-      return true;
     }
 
     float GetTorque() {
@@ -228,8 +209,8 @@ public:
             static_cast<uint8_t>(ctrl_cmd & 0xFF);
         motor_tx_flag_[this->index_] |= 1 << (this->num_);
 
-        if (((~motor_tx_flag_[this->index_]) &
-             (motor_tx_map_[this->index_])) == 0) {
+        if (((~motor_tx_flag_[this->index_]) & (motor_tx_map_[this->index_])) ==
+            0) {
           this->SendData();
         }
       }
@@ -263,8 +244,8 @@ public:
             static_cast<uint8_t>(ctrl_cmd & 0xFF);
         motor_tx_flag_[this->index_] |= 1 << (this->num_);
 
-        if (((~motor_tx_flag_[this->index_]) &
-             (motor_tx_map_[this->index_])) == 0) {
+        if (((~motor_tx_flag_[this->index_]) & (motor_tx_map_[this->index_])) ==
+            0) {
           this->SendData();
         }
       }
@@ -281,8 +262,7 @@ public:
       tx_buff.id = this->config_param_.id_control;
       tx_buff.type = LibXR::CAN::Type::STANDARD;
 
-      memcpy(tx_buff.data, motor_tx_buff_[this->index_],
-             sizeof(tx_buff.data));
+      memcpy(tx_buff.data, motor_tx_buff_[this->index_], sizeof(tx_buff.data));
 
       container_->can_->AddMessage(tx_buff);
 
@@ -310,14 +290,15 @@ public:
     ConfigParam config_param_;
     Feedback feedback_;
 
-  private:
+   private:
     RMMotorContainer* container_;
   };
 
-public:
+ public:
   /**
    * @brief RMMotorContainer 类的构造函数
-   * @details 初始化所有电机实例，并根据其型号和索引自动分配CAN ID和在报文中的位置。
+   * @details 初始化所有电机实例，并根据其型号和索引自动分配CAN
+   * ID和在报文中的位置。
    * @param hw LibXR::HardwareContainer 的引用，用于查找硬件资源
    * @param app LibXR::ApplicationManager 的引用
    * @param param_0 电机0的参数
@@ -332,7 +313,8 @@ public:
    * @param param_9 电机9的参数
    * @param param_10 电机10的参数
    */
- RMMotorContainer(LibXR::HardwareContainer& hw, LibXR::ApplicationManager& app,const char* can_bus_name,
+  RMMotorContainer(LibXR::HardwareContainer& hw, LibXR::ApplicationManager& app,
+                   const char* can_bus_name,
                    Param param_0 = {Model::MOTOR_NONE, false},
                    Param param_1 = {Model::MOTOR_NONE, false},
                    Param param_2 = {Model::MOTOR_NONE, false},
@@ -344,7 +326,7 @@ public:
                    Param param_8 = {Model::MOTOR_NONE, false},
                    Param param_9 = {Model::MOTOR_NONE, false},
                    Param param_10 = {Model::MOTOR_NONE, false})
-    : can_(hw.template FindOrExit<LibXR::CAN>({can_bus_name})) {
+      : can_(hw.template FindOrExit<LibXR::CAN>({can_bus_name})) {
     memset(motor_tx_map_, 0, sizeof(motor_tx_map_));
     size_t index = 0;
     for (const auto param : std::initializer_list<Param*>{
@@ -410,8 +392,8 @@ public:
         // 如果电机模型为 NONE, 使用默认空配置创建
         RMMotor::ConfigParam empty_config{};
         motors_[index] = new RMMotor(this, *param, empty_config);
-        motors_[index]->index_ = 0; // 赋予明确的默认值
-        motors_[index]->num_ = 0;   // 赋予明确的默认值
+        motors_[index]->index_ = 0;  // 赋予明确的默认值
+        motors_[index]->num_ = 0;    // 赋予明确的默认值
       }
 
       index++;
@@ -422,15 +404,30 @@ public:
         [](bool in_isr, RMMotorContainer* self,
            const LibXR::CAN::ClassicPack& pack) {
           RxCallback(in_isr, self, pack);
-        }, this);
+        },
+        this);
 
     can_->Register(rx_callback, LibXR::CAN::Type::STANDARD,
-                   LibXR::CAN::FilterMode::ID_RANGE,
-                   M3508_M2006_FB_ID_BASE, M3508_M2006_FB_ID_EXTAND + 3);
+                   LibXR::CAN::FilterMode::ID_RANGE, M3508_M2006_FB_ID_BASE,
+                   M3508_M2006_FB_ID_EXTAND + 3);
 
     can_->Register(rx_callback, LibXR::CAN::Type::STANDARD,
-                   LibXR::CAN::FilterMode::ID_RANGE,
-                   GM6020_FB_ID_BASE, GM6020_FB_ID_EXTAND + 2);
+                   LibXR::CAN::FilterMode::ID_RANGE, GM6020_FB_ID_BASE,
+                   GM6020_FB_ID_EXTAND + 2);
+  }
+
+  void Update() {
+    LibXR::CAN::ClassicPack pack;
+    while (recv_.Pop(pack) == ErrorCode::OK) {
+      for (size_t i = 0; i < motor_count_; ++i) {
+        if (motors_[i] && motors_[i]->param_.model != Model::MOTOR_NONE) {
+          if (pack.id == motors_[i]->config_param_.id_feedback) {
+            motors_[i]->Decode(pack);
+            break;
+          }
+        }
+      }
+    }
   }
 
   /**
@@ -447,26 +444,26 @@ public:
 
   /**
    * @brief CAN 接收回调的静态包装函数
-   * @details 将接收到的CAN数据包推入无锁队列中，供后续处理。如果队列已满，则丢弃最旧的数据包。
+   * @details
+   * 将接收到的CAN数据包推入无锁队列中，供后续处理。如果队列已满，则丢弃最旧的数据包。
    * @param in_isr 指示是否在中断服务程序中调用
    * @param self 用户提供的参数，这里是 RMMotorContainer 实例的指针
    * @param pack 接收到的 CAN 数据包
    */
   static void RxCallback(bool in_isr, RMMotorContainer* self,
                          const LibXR::CAN::ClassicPack& pack) {
-   UNUSED(in_isr);
+    UNUSED(in_isr);
     while (self->recv_.Push(pack) != ErrorCode::OK) {
-      self->recv_.Pop(); // 如果队列满了，尝试弹出一个包
+      self->recv_.Pop();  // 如果队列满了，尝试弹出一个包
     }
   }
 
   /**
    * @brief 监控函数，由应用框架周期性调用
    */
-  void OnMonitor() override {
-  }
+  void OnMonitor() override {}
 
-private:
+ private:
   RMMotor* motors_[11] = {};
   size_t motor_count_ = 0;
   LibXR::CAN* can_;
