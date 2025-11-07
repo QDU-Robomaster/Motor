@@ -141,26 +141,6 @@ class RMMotorContainer : public LibXR::Application {
       }
     }
 
-    /**
-     * @brief 根据电机型号获取电流控制指令的转换系数 (LSB)
-     * @return float 返回对应型号的LSB值，若型号未知则返回0.0f
-     */
-    float GetLSB() {
-      switch (this->param_.model) {
-        case Model::MOTOR_M2006:
-          return M2006_MAX_ABS_LSB;
-
-        case Model::MOTOR_M3508:
-          return M3508_MAX_ABS_LSB;
-
-        case Model::MOTOR_GM6020:
-          return GM6020_MAX_ABS_LSB;
-
-        default:
-          return 0.0f;
-      }
-    }
-
     float GetSpeed() {
       if (param_.reverse) {
         return -this->feedback_.rotor_rotation_speed;
@@ -193,61 +173,23 @@ class RMMotorContainer : public LibXR::Application {
         XR_LOG_WARN("motor %d high temperature detected", index_);
       }
 
-      out = std::clamp(out, -1.0f, 1.0f);
-      if (param_.reverse) {
-        this->output_ = -out;
-      } else {
-        this->output_ = out;
-      }
-      float lsb = this->GetLSB();
-
-      if (lsb != 0.0f) {
-        int16_t ctrl_cmd = static_cast<int16_t>(this->output_ * lsb);
-        motor_tx_buff_[this->index_][2 * this->num_] =
-            static_cast<uint8_t>((ctrl_cmd >> 8) & 0xFF);
-        motor_tx_buff_[this->index_][2 * this->num_ + 1] =
-            static_cast<uint8_t>(ctrl_cmd & 0xFF);
-        motor_tx_flag_[this->index_] |= 1 << (this->num_);
-
-        if (((~motor_tx_flag_[this->index_]) & (motor_tx_map_[this->index_])) ==
-            0) {
-          this->SendData();
-        }
-      }
-    }
-
-    void TorqueControl(float out) {
-      if (this->feedback_.temp > 75.0f) {
-        out = 0.0f;
-        XR_LOG_WARN("motor %d high temperature detected", index_);
-      }
-
-      float kt = this->GetTorque();
-      float max_current = this->GetCurrent();
-      float lsb = this->GetLSB();
-
-      float torque = out / kt;
-      float out_ = torque / max_current;
-
-      out = std::clamp(out_, -1.0f, 1.0f);
+      out = std::clamp(out, -16384.0f, 16384.0f);
       if (param_.reverse) {
         this->output_ = -out;
       } else {
         this->output_ = out;
       }
 
-      if (lsb != 0.0f) {
-        int16_t ctrl_cmd = static_cast<int16_t>(this->output_ * lsb);
-        motor_tx_buff_[this->index_][2 * this->num_] =
-            static_cast<uint8_t>((ctrl_cmd >> 8) & 0xFF);
-        motor_tx_buff_[this->index_][2 * this->num_ + 1] =
-            static_cast<uint8_t>(ctrl_cmd & 0xFF);
-        motor_tx_flag_[this->index_] |= 1 << (this->num_);
+      int16_t ctrl_cmd = static_cast<int16_t>(this->output_);
+      motor_tx_buff_[this->index_][2 * this->num_] =
+          static_cast<uint8_t>((ctrl_cmd >> 8) & 0xFF);
+      motor_tx_buff_[this->index_][2 * this->num_ + 1] =
+          static_cast<uint8_t>(ctrl_cmd & 0xFF);
+      motor_tx_flag_[this->index_] |= 1 << (this->num_);
 
-        if (((~motor_tx_flag_[this->index_]) & (motor_tx_map_[this->index_])) ==
-            0) {
-          this->SendData();
-        }
+      if (((~motor_tx_flag_[this->index_]) & (motor_tx_map_[this->index_])) ==
+          0) {
+        this->SendData();
       }
     }
 

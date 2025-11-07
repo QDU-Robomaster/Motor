@@ -16,8 +16,11 @@ depends: []
 === END MANIFEST === */
 // clang-format on
 
-#include "app_framework.hpp"
+#include <cstddef>
+
 #include "RMMotorContainer.hpp"
+#include "app_framework.hpp"
+#include "libxr_def.hpp"
 
 /**
  * @brief 电机容器模板类
@@ -26,7 +29,6 @@ depends: []
 template <typename MotorType>
 class Motor : public LibXR::Application {
  public:
-
   using Model = typename MotorType::Model;
   using Param = typename MotorType::Param;
 
@@ -37,8 +39,8 @@ class Motor : public LibXR::Application {
    * @param can_bus_name CAN总线名称
    * @param param_0~param_10 11个电机的参数配置
    */
-  Motor(LibXR::HardwareContainer& hw, LibXR::ApplicationManager& app, const char* can_bus_name,
-        Param param_0 = {Model::MOTOR_NONE, false},
+  Motor(LibXR::HardwareContainer& hw, LibXR::ApplicationManager& app,
+        const char* can_bus_name, Param param_0 = {Model::MOTOR_NONE, false},
         Param param_1 = {Model::MOTOR_NONE, false},
         Param param_2 = {Model::MOTOR_NONE, false},
         Param param_3 = {Model::MOTOR_NONE, false},
@@ -80,28 +82,14 @@ class Motor : public LibXR::Application {
     }
   }
 
-  void Update() {
-    motor_.Update();
-  }
-
-  /**
-   * @brief 设置指定电机的力矩控制
-   * @param index 电机索引
-   * @param torque 力矩值
-   */
-  void SetTorque(size_t index, float torque) {
-    auto* motor = GetMotor(index);
-    if (motor != nullptr) {
-      motor->TorqueControl(torque);
-    }
-  }
+  void Update() { motor_.Update(); }
 
   /**
    * @brief 获取指定电机的角度
    * @param index 电机索引
    * @return 电机角度（弧度）
    */
-  float GetAngle(size_t index) {
+  float GetRPM(size_t index) {
     auto* motor = GetMotor(index);
     return (motor != nullptr) ? motor->GetAngle() : 0.0f;
   }
@@ -114,6 +102,11 @@ class Motor : public LibXR::Application {
   float GetSpeed(size_t index) {
     auto* motor = GetMotor(index);
     return (motor != nullptr) ? motor->GetSpeed() : 0.0f;
+  }
+
+  float GetOmega(size_t index) {
+    auto* motor = GetMotor(index);
+    return (motor != nullptr) ? motor->GetSpeed() / 184.6153 : 0.0f;
   }
 
   /**
