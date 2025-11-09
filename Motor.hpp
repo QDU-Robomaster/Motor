@@ -89,7 +89,7 @@ class Motor : public LibXR::Application {
    * @param index 电机索引
    * @return 电机角度（弧度）
    */
-  float GetRPM(size_t index) {
+  float GetAngle(size_t index) {
     auto* motor = GetMotor(index);
     return (motor != nullptr) ? motor->GetAngle() : 0.0f;
   }
@@ -99,7 +99,7 @@ class Motor : public LibXR::Application {
    * @param index 电机索引
    * @return 电机速度
    */
-  float GetSpeed(size_t index) {
+  float GetRPM(size_t index) {
     auto* motor = GetMotor(index);
     return (motor != nullptr) ? motor->GetSpeed() : 0.0f;
   }
