@@ -10,9 +10,13 @@ depends: []
 === END MANIFEST === */
 // clang-format on
 
+#include <cstddef>
+#include <cstdint>
+
 #include "app_framework.hpp"
 #include "can.hpp"
 #include "cycle_value.hpp"
+#include "libxr_def.hpp"
 
 /* RMMotor id */
 /* id     feedback id     control id */
@@ -48,16 +52,16 @@ depends: []
 
 class RMMotorContainer : public LibXR::Application {
  public:
-  static inline uint8_t motor_tx_buff_[MOTOR_CTRL_ID_NUMBER][8];
+  static inline uint8_t motor_tx_buff_[MOTOR_CTRL_ID_NUMBER][8]{};
 
-  static inline uint8_t motor_tx_flag_[MOTOR_CTRL_ID_NUMBER];
+  static inline uint8_t motor_tx_flag_[MOTOR_CTRL_ID_NUMBER]{};
 
-  static inline uint8_t motor_tx_map_[MOTOR_CTRL_ID_NUMBER];
+  static inline uint8_t motor_tx_map_[MOTOR_CTRL_ID_NUMBER]{};
 
   /**
    * @brief 电机型号
    */
-  enum class Model {
+  enum class Model : uint8_t {
     MOTOR_NONE = 0,
     MOTOR_M2006,
     MOTOR_M3508,
@@ -106,13 +110,31 @@ class RMMotorContainer : public LibXR::Application {
       int16_t raw_current =
           static_cast<int16_t>((pack.data[4] << 8) | pack.data[5]);
 
-      this->feedback_.rotor_abs_angle =
-          static_cast<float>(raw_angle) / MOTOR_ENC_RES * M_2PI;
+      this->feedback_.rotor_abs_angle = static_cast<float>(raw_angle) /
+                                        MOTOR_ENC_RES *
+                                        static_cast<float>(M_2PI);
       this->feedback_.rotor_rotation_speed =
           static_cast<int16_t>((pack.data[2] << 8) | pack.data[3]);
       this->feedback_.torque_current =
           static_cast<float>(raw_current) * M3508_MAX_ABS_CUR / MOTOR_CUR_RES;
       this->feedback_.temp = pack.data[6];
+    }
+
+    /**
+     * @brief 更新电机状态，处理接收队列中的所有反馈数据包
+     * @return bool 总是返回 true
+     */
+    bool Update() {
+      LibXR::CAN::ClassicPack pack;
+
+      while (container_->recv_.Pop(pack) == ErrorCode::OK) {
+        if ((pack.id == config_param_.id_feedback) &&
+            (Model::MOTOR_NONE != this->param_.model)) {
+          this->Decode(pack);
+        }
+      }
+
+      return true;
     }
 
     float GetTorque() {
@@ -141,11 +163,19 @@ class RMMotorContainer : public LibXR::Application {
       }
     }
 
-    float GetSpeed() {
+    float GetRPM() {
       if (param_.reverse) {
         return -this->feedback_.rotor_rotation_speed;
       } else {
         return this->feedback_.rotor_rotation_speed;
+      }
+    }
+
+    float GetOmega() {
+      if (param_.reverse) {
+        return -this->feedback_.rotor_rotation_speed / 184.6153f;
+      } else {
+        return this->feedback_.rotor_rotation_speed / 184.6153f;
       }
     }
 
@@ -224,6 +254,10 @@ class RMMotorContainer : public LibXR::Application {
       this->feedback_.temp = 0.0f;
     }
 
+  void SetIndex(uint8_t index) { index_ = index; }
+  void SetNum(uint8_t num) { num_ = num; }
+
+   private:
     uint8_t index_;
     uint8_t num_;
     float output_ = 0.0f;
@@ -232,7 +266,6 @@ class RMMotorContainer : public LibXR::Application {
     ConfigParam config_param_;
     Feedback feedback_;
 
-   private:
     RMMotorContainer* container_;
   };
 
@@ -269,17 +302,18 @@ class RMMotorContainer : public LibXR::Application {
                    Param param_9 = {Model::MOTOR_NONE, false},
                    Param param_10 = {Model::MOTOR_NONE, false})
       : can_(hw.template FindOrExit<LibXR::CAN>({can_bus_name})) {
+    UNUSED(app);
     memset(motor_tx_map_, 0, sizeof(motor_tx_map_));
     size_t index = 0;
-    for (const auto param : std::initializer_list<Param*>{
+    for (const auto PARAM : std::initializer_list<Param*>{
              &param_0, &param_1, &param_2, &param_3, &param_4, &param_5,
              &param_6, &param_7, &param_8, &param_9, &param_10}) {
-      if (param->model != Model::MOTOR_NONE) {
+      if (PARAM->model != Model::MOTOR_NONE) {
         RMMotor::ConfigParam config{};
         uint8_t motor_num = 0;
         uint8_t motor_index = 0;
 
-        switch (param->model) {
+        switch (PARAM->model) {
           case Model::MOTOR_M2006:
           case Model::MOTOR_M3508:
             if (index <= 3) {
@@ -326,16 +360,15 @@ class RMMotorContainer : public LibXR::Application {
 
         motor_tx_map_[motor_index] |= (1 << motor_num);
 
-        motors_[index] = new RMMotor(this, *param, config);
-        motors_[index]->index_ = motor_index;
-        motors_[index]->num_ = motor_num;
+        motors_[index] = new RMMotor(this, *PARAM, config);
+        motors_[index]->SetIndex(motor_index);
+        motors_[index]->SetNum(motor_num);
 
       } else {
-        // 如果电机模型为 NONE, 使用默认空配置创建
         RMMotor::ConfigParam empty_config{};
-        motors_[index] = new RMMotor(this, *param, empty_config);
-        motors_[index]->index_ = 0;  // 赋予明确的默认值
-        motors_[index]->num_ = 0;    // 赋予明确的默认值
+        motors_[index] = new RMMotor(this, *PARAM, empty_config);
+        motors_[index]->SetIndex(0);
+        motors_[index]->SetNum(0);
       }
 
       index++;
@@ -356,20 +389,6 @@ class RMMotorContainer : public LibXR::Application {
     can_->Register(rx_callback, LibXR::CAN::Type::STANDARD,
                    LibXR::CAN::FilterMode::ID_RANGE, GM6020_FB_ID_BASE,
                    GM6020_FB_ID_EXTAND + 2);
-  }
-
-  void Update() {
-    LibXR::CAN::ClassicPack pack;
-    while (recv_.Pop(pack) == ErrorCode::OK) {
-      for (size_t i = 0; i < motor_count_; ++i) {
-        if (motors_[i] && motors_[i]->param_.model != Model::MOTOR_NONE) {
-          if (pack.id == motors_[i]->config_param_.id_feedback) {
-            motors_[i]->Decode(pack);
-            break;
-          }
-        }
-      }
-    }
   }
 
   /**
@@ -406,10 +425,10 @@ class RMMotorContainer : public LibXR::Application {
   void OnMonitor() override {}
 
  private:
+  LibXR::LockFreeQueue<LibXR::CAN::ClassicPack> recv_ =
+      LibXR::LockFreeQueue<LibXR::CAN::ClassicPack>(1);
+
   RMMotor* motors_[11] = {};
   size_t motor_count_ = 0;
   LibXR::CAN* can_;
-
-  LibXR::LockFreeQueue<LibXR::CAN::ClassicPack> recv_ =
-      LibXR::LockFreeQueue<LibXR::CAN::ClassicPack>(1);
 };

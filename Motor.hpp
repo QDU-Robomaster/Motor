@@ -70,65 +70,6 @@ class Motor : public LibXR::Application {
     return motor_.GetMotor(index);
   }
 
-  /**
-   * @brief 设置指定电机的电流控制
-   * @param index 电机索引
-   * @param current 归一化电流值 [-1.0, 1.0]
-   */
-  void SetCurrent(size_t index, float current) {
-    auto* motor = GetMotor(index);
-    if (motor != nullptr) {
-      motor->CurrentControl(current);
-    }
-  }
-
-  void Update() { motor_.Update(); }
-
-  /**
-   * @brief 获取指定电机的角度
-   * @param index 电机索引
-   * @return 电机角度（弧度）
-   */
-  float GetAngle(size_t index) {
-    auto* motor = GetMotor(index);
-    return (motor != nullptr) ? motor->GetAngle() : 0.0f;
-  }
-
-  /**
-   * @brief 获取指定电机的速度
-   * @param index 电机索引
-   * @return 电机速度
-   */
-  float GetRPM(size_t index) {
-    auto* motor = GetMotor(index);
-    return (motor != nullptr) ? motor->GetSpeed() : 0.0f;
-  }
-
-  float GetOmega(size_t index) {
-    auto* motor = GetMotor(index);
-    return (motor != nullptr) ? motor->GetSpeed() / 184.6153 : 0.0f;
-  }
-
-  /**
-   * @brief 获取指定电机的电流
-   * @param index 电机索引
-   * @return 电机电流
-   */
-  float GetCurrent(size_t index) {
-    auto* motor = GetMotor(index);
-    return (motor != nullptr) ? motor->GetCurrent() : 0.0f;
-  }
-
-  /**
-   * @brief 获取指定电机的温度
-   * @param index 电机索引
-   * @return 电机温度
-   */
-  float GetTemp(size_t index) {
-    auto* motor = GetMotor(index);
-    return (motor != nullptr) ? motor->GetTemp() : 0.0f;
-  }
-
  private:
   MotorType motor_;  // 电机容器实例
 };
