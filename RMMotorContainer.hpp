@@ -109,9 +109,6 @@ class RMMotorContainer : public LibXR::Application {
      * @param pack 包含电机反馈数据的CAN数据包
      */
     void Decode(LibXR::CAN::ClassicPack& pack) {
-      if(pack.id != config_param_.id_feedback) {
-        return;
-      }
       uint16_t raw_angle =
           static_cast<uint16_t>((pack.data[0] << 8) | pack.data[1]);
       int16_t raw_current =
@@ -133,8 +130,9 @@ class RMMotorContainer : public LibXR::Application {
      */
     bool Update() {
       LibXR::CAN::ClassicPack pack;
-      recv_.Pop(pack);
-      this->Decode(pack);
+      while (recv_.Pop(pack) == ErrorCode::OK) {
+        this->Decode(pack);
+      }
       return true;
     }
 
