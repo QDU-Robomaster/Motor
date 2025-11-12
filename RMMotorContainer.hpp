@@ -109,6 +109,9 @@ class RMMotorContainer : public LibXR::Application {
      * @param pack 包含电机反馈数据的CAN数据包
      */
     void Decode(LibXR::CAN::ClassicPack& pack) {
+      if(pack.id != config_param_.id_feedback) {
+        return;
+      }
       uint16_t raw_angle =
           static_cast<uint16_t>((pack.data[0] << 8) | pack.data[1]);
       int16_t raw_current =
@@ -130,14 +133,8 @@ class RMMotorContainer : public LibXR::Application {
      */
     bool Update() {
       LibXR::CAN::ClassicPack pack;
-
-      container_->recv_.Pop(pack);
-      while (container_->recv_.Pop(pack) == ErrorCode::OK) {
-      if ((pack.id == config_param_.id_feedback) &&
-          (Model::MOTOR_NONE != this->param_.model)) {
-        this->Decode(pack);
-      }
-      }
+      recv_.Pop(pack);
+      this->Decode(pack);
       return true;
     }
 
@@ -258,8 +255,15 @@ class RMMotorContainer : public LibXR::Application {
       this->feedback_.temp = 0.0f;
     }
 
+    void PushToQueue(const LibXR::CAN::ClassicPack& pack) {
+      while (recv_.Push(pack) != ErrorCode::OK) {
+        recv_.Pop();
+      }
+    }
+
     void SetIndex(uint8_t index) { index_ = index; }
     void SetNum(uint8_t num) { num_ = num; }
+    uint32_t GetID() const { return config_param_.id_feedback; }
 
    private:
     uint8_t index_;
@@ -269,6 +273,8 @@ class RMMotorContainer : public LibXR::Application {
     Param param_;
     ConfigParam config_param_;
     Feedback feedback_;
+
+    LibXR::LockFreeQueue<LibXR::CAN::ClassicPack> recv_{1};
 
     RMMotorContainer* container_;
   };
@@ -421,8 +427,12 @@ class RMMotorContainer : public LibXR::Application {
   static void RxCallback(bool in_isr, RMMotorContainer* self,
                          const LibXR::CAN::ClassicPack& pack) {
     UNUSED(in_isr);
-    while (self->recv_.Push(pack) != ErrorCode::OK) {
-      self->recv_.Pop();  // 如果队列满了，尝试弹出一个包
+    for (size_t i = 0; i < self->motor_count_; ++i) {
+      auto motor = self->motors_[i];
+      if (motor && motor->GetID() == pack.id) {
+        motor->PushToQueue(pack);
+        break;
+      }
     }
   }
 
@@ -502,9 +512,6 @@ class RMMotorContainer : public LibXR::Application {
 
     return LibXR::RamFS::CreateFile(cmd_name_, CommandFunc, this);
   }
-
-  LibXR::LockFreeQueue<LibXR::CAN::ClassicPack> recv_ =
-      LibXR::LockFreeQueue<LibXR::CAN::ClassicPack>(256);
 
   RMMotor* motors_[11] = {};
   size_t motor_count_ = 0;
