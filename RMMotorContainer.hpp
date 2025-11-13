@@ -10,6 +10,8 @@ depends: []
 === END MANIFEST === */
 // clang-format on
 
+#include <algorithm>
+
 #include "app_framework.hpp"
 #include "can.hpp"
 #include "cycle_value.hpp"
@@ -215,22 +217,57 @@ class RMMotorContainer : public LibXR::Application {
     float GetAngle() { return this->feedback_.rotor_abs_angle; }
 
     /**
-     * @brief 设置电机的电流控制指令
+     * @brief 设置电机的扭矩控制指令
      * @details 将归一化的输出值转换为16位整数指令，存入共享发送缓冲区。
      *          当同一控制ID下的所有电机都更新指令后，触发CAN报文发送。
-     * @param out 归一化的电机输出值，范围 [-1.0, 1.0]
+     * @param torque 归一化的电机扭矩输出值，范围 [-6.0, 6.0](M3508)
      */
-    void TorqueControl(float torque,float reductionratio) {
+    void TorqueControl(float torque, float reductionratio) {
       if (this->feedback_.temp > 75.0f) {
         torque = 0.0f;
         XR_LOG_WARN("motor %d high temperature detected", index_);
       }
-      output_ = std::clamp(torque*reductionratio/KGetTorque()/GetCurrentMAX(), -1.0f, 1.0f)*16384.0f;
+      output_ =
+          std::clamp(torque * reductionratio / KGetTorque() / GetCurrentMAX(),
+                     -1.0f, 1.0f) *
+          16384.0f;
 
       if (param_.reverse) {
         this->output_ = -torque;
       } else {
         this->output_ = torque;
+      }
+
+      int16_t ctrl_cmd = static_cast<int16_t>(this->output_);
+      motor_tx_buff_[this->index_][2 * this->num_] =
+          static_cast<uint8_t>((ctrl_cmd >> 8) & 0xFF);
+      motor_tx_buff_[this->index_][2 * this->num_ + 1] =
+          static_cast<uint8_t>(ctrl_cmd & 0xFF);
+      motor_tx_flag_[this->index_] |= 1 << (this->num_);
+
+      if (((~motor_tx_flag_[this->index_]) & (motor_tx_map_[this->index_])) ==
+          0) {
+        this->SendData();
+      }
+    }
+
+    /**
+     * @brief 设置电机的输出轴转速控制指令
+     * @details 将归一化的输出值转换为16位整数指令，存入共享发送缓冲区。
+     *          当同一控制ID下的所有电机都更新指令后，触发CAN报文发送。
+     * @param rpm 归一化的电机转速输出值，范围 [-500.0, 500.0](M3508)
+     */
+    void RPMControl(float rpm, float reductionratio) {
+      if (this->feedback_.temp > 75.0f) {
+        rpm = 0.0f;
+        XR_LOG_WARN("motor %d high temperature detected", index_);
+      }
+      output_ = std::clamp(rpm * reductionratio, -16384.0f, 16384.0f);
+
+      if (param_.reverse) {
+        this->output_ = -rpm;
+      } else {
+        this->output_ = rpm;
       }
 
       int16_t ctrl_cmd = static_cast<int16_t>(this->output_);
@@ -498,9 +535,8 @@ class RMMotorContainer : public LibXR::Application {
           "[%lu ms][Motor %d] Angle: %.2f rad, RPM: %.0f, Current: %.2f A, "
           "Temp: "
           "%.0f C\r\n",
-          LibXR::Thread::GetTime(),
-          motor_index, motor->GetAngle(), motor->GetRPM(), motor->GetCurrent(),
-          motor->GetTemp());
+          LibXR::Thread::GetTime(), motor_index, motor->GetAngle(),
+          motor->GetRPM(), motor->GetCurrent(), motor->GetTemp());
     };
 
     if (argc == 3) {
