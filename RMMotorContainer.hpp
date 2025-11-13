@@ -136,6 +136,10 @@ class RMMotorContainer : public LibXR::Application {
       return true;
     }
 
+    /**
+     * @brief 获取电机扭矩常数
+     * @return float 电机扭矩常数(N·m/A)
+     */
     float GetTorque() {
       switch (this->param_.model) {
         case Model::MOTOR_M2006:
@@ -149,6 +153,10 @@ class RMMotorContainer : public LibXR::Application {
       }
     }
 
+    /**
+     * @brief 获取电机最大允许电流
+     * @return float 最大电流值(A)
+     */
     float GetCurrentMAX() {
       switch (this->param_.model) {
         case Model::MOTOR_M2006:
@@ -162,6 +170,10 @@ class RMMotorContainer : public LibXR::Application {
       }
     }
 
+    /**
+     * @brief 获取电机转速(RPM)
+     * @return float 电机转速，如果设置了反向则返回负值
+     */
     float GetRPM() {
       if (param_.reverse) {
         return -this->feedback_.rotor_rotation_speed;
@@ -170,6 +182,10 @@ class RMMotorContainer : public LibXR::Application {
       }
     }
 
+    /**
+     * @brief 获取电机角速度(rad/s)
+     * @return float 电机角速度，如果设置了反向则返回负值
+     */
     float GetOmega() {
       if (param_.reverse) {
         return -this->feedback_.rotor_rotation_speed / 184.6153f;
@@ -178,6 +194,10 @@ class RMMotorContainer : public LibXR::Application {
       }
     }
 
+    /**
+     * @brief 获取电机扭矩电流
+     * @return float 扭矩电流(A)，如果设置了反向则返回负值
+     */
     float GetCurrent() {
       if (param_.reverse) {
         return -this->feedback_.torque_current;
@@ -186,8 +206,16 @@ class RMMotorContainer : public LibXR::Application {
       }
     }
 
+    /**
+     * @brief 获取电机温度
+     * @return float 电机温度(°C)
+     */
     float GetTemp() { return this->feedback_.temp; }
 
+    /**
+     * @brief 获取电机转子绝对角度
+     * @return float 转子绝对角度(rad)
+     */
     float GetAngle() { return this->feedback_.rotor_abs_angle; }
 
     /**
