@@ -169,6 +169,22 @@ class RMMotorContainer : public LibXR::Application {
     }
 
     /**
+     * @brief 获取编码阈值
+     * @return float 编码阈值
+     */
+    float GetLSB() {
+      switch (this->param_.model) {
+        case Model::MOTOR_M2006:
+          return M2006_MAX_ABS_LSB;
+        case Model::MOTOR_M3508:
+        case Model::MOTOR_GM6020:
+          return GM6020_MAX_ABS_LSB;
+        default:
+          return 0.0f;
+      }
+    }
+
+    /**
      * @brief 获取电机转速(RPM)
      * @return float 电机转速，如果设置了反向则返回负值
      */
@@ -230,12 +246,10 @@ class RMMotorContainer : public LibXR::Application {
       output_ =
           std::clamp(torque * reductionratio / KGetTorque() / GetCurrentMAX(),
                      -1.0f, 1.0f) *
-          16384.0f;
+          GetLSB();
 
       if (param_.reverse) {
-        this->output_ = -torque;
-      } else {
-        this->output_ = torque;
+        this->output_ = -output_;
       }
 
       int16_t ctrl_cmd = static_cast<int16_t>(this->output_);
@@ -262,12 +276,10 @@ class RMMotorContainer : public LibXR::Application {
         rpm = 0.0f;
         XR_LOG_WARN("motor %d high temperature detected", index_);
       }
-      output_ = std::clamp(rpm * reductionratio, -16384.0f, 16384.0f);
+      output_ = std::clamp(rpm * reductionratio, -GetLSB(), GetLSB());
 
       if (param_.reverse) {
-        this->output_ = -rpm;
-      } else {
-        this->output_ = rpm;
+        this->output_ = -output_;
       }
 
       int16_t ctrl_cmd = static_cast<int16_t>(this->output_);
