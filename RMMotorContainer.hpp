@@ -185,6 +185,23 @@ class RMMotorContainer : public LibXR::Application {
     }
 
     /**
+     * @brief 获取转子转速系数
+     * @return float 转速系数
+     */
+    float KGetRPM(){
+      switch (this->param_.model) {
+        case Model::MOTOR_M2006:
+          return 1.4976f;
+        case Model::MOTOR_M3508:
+          return 0.549674f;
+        case Model::MOTOR_GM6020:
+          return 0.008656f;
+        default:
+          return 0.0f;
+      }
+    }
+
+    /**
      * @brief 获取电机转速(RPM)
      * @return float 电机转速，如果设置了反向则返回负值
      */
@@ -276,7 +293,7 @@ class RMMotorContainer : public LibXR::Application {
         rpm = 0.0f;
         XR_LOG_WARN("motor %d high temperature detected", index_);
       }
-      output_ = std::clamp(rpm * reductionratio, -GetLSB(), GetLSB());
+      output_ = std::clamp(rpm * reductionratio/KGetRPM(), -GetLSB(), GetLSB());
 
       if (param_.reverse) {
         this->output_ = -output_;
