@@ -38,7 +38,7 @@ class Motor {
     float temp;                         /*温度*/
   };
 
-  virtual ~Motor();
+  virtual ~Motor() = default;
   virtual void Enable() = 0;
   virtual void Disable() = 0;
   virtual void Relax() = 0;

@@ -62,7 +62,7 @@ jobs:
         run: |
           echo "$HOME/.local/bin" >> $GITHUB_PATH
 
-      - name: Install xrobot toolchain
+      - name: Install xrobot toolchain (assumes pyproject/tar.gz/pip install .)
         run: |
           pip3 install xrobot libxr
 
