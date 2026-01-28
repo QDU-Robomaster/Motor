@@ -78,10 +78,6 @@ jobs:
         run: |
           xrobot_add_mod BlinkLED --instance-id BlinkLED_0
 
-      - name: Add this repo module
-        run: |
-          xrobot_add_mod ${{ env.XR_MODULE_NAME }} && cat User/xrobot.yaml
-
       - name: Generate main again
         run: |
           xrobot_setup
