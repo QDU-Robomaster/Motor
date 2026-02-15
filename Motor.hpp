@@ -18,18 +18,18 @@ class Motor {
   };
 
   struct MotorCmd {
-    ControlMode mode; /*电机控制模式*/
+    ControlMode mode;             /*电机控制模式*/
     float reduction_ratio = 1.0f; /*减速比*/
-    float torque = 0;    /*力矩*/
-    float position = 0;  /*目标位置*/
-    float velocity = 0;  /*目标速度*/
-    float kp = 0;        /*刚度*/
-    float kd = 0;        /*阻尼*/
+    float torque = 0;             /*力矩*/
+    float position = 0;           /*目标位置*/
+    float velocity = 0;           /*目标速度*/
+    float kp = 0;                 /*刚度*/
+    float kd = 0;                 /*阻尼*/
   };
 
   struct Feedback {
-    uint8_t error_id;                      /*电机错误码*/
-    uint8_t state = 0;                      /*电机错误状态*/
+    uint8_t error_id;                   /*电机错误码*/
+    uint8_t state = 0;                  /*电机错误状态*/
     float position;                     /*电机原始角度*/
     LibXR::CycleValue<float> abs_angle; /*CycleValue的角度*/
     float velocity;                     /*转速*/
