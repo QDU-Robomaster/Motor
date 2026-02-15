@@ -7,6 +7,10 @@
 #include "cycle_value.hpp"
 #include "libxr_def.hpp"
 
+/**
+ * @brief 电机抽象接口
+ * @details 统一描述电机控制命令、反馈格式与基础控制能力。
+ */
 class Motor {
  public:
   enum ControlMode : uint8_t {
@@ -38,14 +42,52 @@ class Motor {
     float temp;                         /*温度*/
   };
 
+  /**
+   * @brief 虚析构函数
+   */
   virtual ~Motor() = default;
+
+  /**
+   * @brief 使能电机输出
+   */
   virtual void Enable() = 0;
+
+  /**
+   * @brief 失能电机输出
+   */
   virtual void Disable() = 0;
+
+  /**
+   * @brief 松开电机（输出零力矩/零电流）
+   */
   virtual void Relax() = 0;
+
+  /**
+   * @brief 更新电机反馈
+   * @return ErrorCode 更新结果
+   */
   virtual ErrorCode Update() = 0;
+
+  /**
+   * @brief 获取当前反馈
+   * @return const Feedback& 反馈数据引用
+   */
   virtual const Feedback& GetFeedback() = 0;
+
+  /**
+   * @brief 下发控制命令
+   * @param cmd 控制命令
+   */
   virtual void Control(const MotorCmd& cmd) = 0;
+
+  /**
+   * @brief 清除电机错误状态
+   */
   virtual void ClearError() = 0;
+
+  /**
+   * @brief 保存零点
+   */
   virtual void SaveZeroPoint() = 0;
 
  private:
