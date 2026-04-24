@@ -66,7 +66,7 @@ class Motor {
    * @brief 更新电机反馈
    * @return ErrorCode 更新结果
    */
-  virtual ErrorCode Update() = 0;
+  virtual LibXR::ErrorCode Update() = 0;
 
   /**
    * @brief 获取当前反馈
