@@ -1,9 +1,16 @@
 #pragma once
+
+// clang-format off
+/* === MODULE MANIFEST V2 ===
+module_description: Motor reusable library
+standalone: false
+depends: []
+=== END MANIFEST === */
+// clang-format on
 // clang-format on
 
 #include <cstdint>
 
-#include "app_framework.hpp"
 #include "cycle_value.hpp"
 #include "libxr_def.hpp"
 
@@ -11,9 +18,11 @@
  * @brief 电机抽象接口
  * @details 统一描述电机控制命令、反馈格式与基础控制能力。
  */
-class Motor {
+class Motor
+{
  public:
-  enum ControlMode : uint8_t {
+  enum ControlMode : uint8_t
+  {
     MODE_POSITION, /*位置控制模式*/
     MODE_VELOCITY, /*速度控制模式*/
     MODE_TORQUE,   /*力矩控制模式*/
@@ -21,7 +30,8 @@ class Motor {
     MODE_MIT,      /*MIT控制模式*/
   };
 
-  struct MotorCmd {
+  struct MotorCmd
+  {
     ControlMode mode;             /*电机控制模式*/
     float reduction_ratio = 1.0f; /*减速比*/
     float torque = 0;             /*力矩*/
@@ -31,7 +41,8 @@ class Motor {
     float kd = 0;                 /*阻尼*/
   };
 
-  struct Feedback {
+  struct Feedback
+  {
     uint8_t error_id;                   /*电机错误码*/
     uint8_t state = 0;                  /*电机错误状态*/
     float position;                     /*电机原始角度*/

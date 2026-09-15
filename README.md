@@ -1,5 +1,16 @@
 # Motor
 
+## Static assembly source line
+
+This source line uses explicit C++ constructor dependencies and ordered instance
+arguments. Inspect the current primary header with `xrobot_mod_parser --path .`;
+its declarations, not old manifest/config examples, define the interface.
+Historical HardwareContainer/ApplicationManager examples below apply only to the
+older dynamic source tags. Device/protocol descriptions remain relevant.
+See the XRobot [migration guide](https://github.com/xrobot-org/XRobot/blob/dev/MIGRATION.md).
+Compilation is not hardware validation; retain version-specific board evidence.
+
+
 用于统一电机控制接口的抽象基类模块，业务模块通过它屏蔽具体电机驱动差异（如 `RMMotor`、`DMMotor`）。
 
 ## 解决什么问题
