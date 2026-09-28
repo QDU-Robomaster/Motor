@@ -1,79 +1,73 @@
 # Motor
 
-## Static assembly source line
+统一电机控制接口的抽象基类。业务模块只持有 `Motor&` / `Motor*`，通过它屏蔽具体电机驱动
+（如 `RMMotor`、`DMMotor`）的差异。
 
-This source line uses explicit C++ constructor dependencies and ordered instance
-arguments. Inspect the current primary header with `xrobot_mod_parser --path .`;
-its declarations, not old manifest/config examples, define the interface.
-Historical HardwareContainer/ApplicationManager examples below apply only to the
-older dynamic source tags. Device/protocol descriptions remain relevant.
-See the XRobot [migration guide](https://github.com/xrobot-org/XRobot/blob/dev/MIGRATION.md).
-Compilation is not hardware validation; retain version-specific board evidence.
+它统一了三件事：
 
+- 控制命令结构（位置 / 速度 / 力矩 / 电流 / MIT）；
+- 反馈结构（角度、转速、角速度、扭矩、温度、错误码）；
+- 上层模块只依赖抽象接口，不耦合具体驱动实现。
 
-用于统一电机控制接口的抽象基类模块，业务模块通过它屏蔽具体电机驱动差异（如 `RMMotor`、`DMMotor`）。
+## 依赖
 
-## 解决什么问题
+无其他模块依赖，仅使用 LibXR。
 
-Motor 主要解决三件事：
+本模块是库（manifest `standalone: false`）：它不会被实例化，没有构造参数；
+驱动模块和业务模块包含 `Motor.hpp`，并在各自 manifest 的 `depends` 中列出
+`QDU-Robomaster/Motor`，由此被拉入工程。
 
-1. 统一控制命令结构（位置/速度/力矩/电流/MIT）。
-2. 统一反馈结构（角度、角速度、扭矩、温度、错误码）。
-3. 让上层模块只依赖抽象接口，不耦合具体驱动实现。
+## 公共接口
 
-## 核心接口
+`Motor` 是纯虚接口：
 
-`Motor` 是纯虚接口，核心方法如下：
+- 生命周期：`Enable()` / `Disable()` / `Relax()`；
+- 反馈刷新：`LibXR::ErrorCode Update()`；
+- 反馈读取：`const Feedback& GetFeedback()`；
+- 控制下发：`Control(const MotorCmd&)`；
+- 维护：`ClearError()` / `SaveZeroPoint()`。
 
-1. 生命周期：`Enable()` / `Disable()` / `Relax()`。
-2. 闭环更新：`Update()`。
-3. 反馈读取：`GetFeedback()`。
-4. 控制下发：`Control(const MotorCmd&)`。
-5. 维护接口：`ClearError()` / `SaveZeroPoint()`。
+数据结构：
 
-核心数据结构：
+- `Motor::ControlMode`：`MODE_POSITION`、`MODE_VELOCITY`、`MODE_TORQUE`、`MODE_CURRENT`、`MODE_MIT`。
+- `Motor::MotorCmd`：`mode`、`reduction_ratio`（默认 1.0）、`torque`、`position`、`velocity`、`kp`、`kd`。
+  各驱动只实现其中一部分模式，字段的解释也由驱动决定（例如 `RMMotor` 的 `MODE_CURRENT`
+  从 `velocity` 字段读取归一化电流），见各驱动的 README。
+- `Motor::Feedback`：`error_id`、`state`、`position`（原始角度）、`abs_angle`、`velocity`（转速）、
+  `omega`（角速度）、`torque`、`temp`。`abs_angle` 是 `LibXR::CycleValue<float>`，即归一化到
+  [0, 2π) 的单圈角；需要多圈角度时，上层用相邻两次 `abs_angle` 的差值（`CycleValue` 相减得到
+  [-π, π) 的最短差）自行累加。
 
-1. `Motor::ControlMode`：`MODE_POSITION`、`MODE_VELOCITY`、`MODE_TORQUE`、`MODE_CURRENT`、`MODE_MIT`。
-2. `Motor::MotorCmd`：统一控制指令参数。
-3. `Motor::Feedback`：统一反馈数据。
-
-## 典型使用方式
-
-业务层建议只持有 `Motor*`，例如：
+典型用法：
 
 ```cpp
-void DriveMotor(Motor* motor) {
-  motor->Enable();
-  motor->Update();
+void DriveMotor(Motor& motor)
+{
+  motor.Update();
+  const Motor::Feedback& fb = motor.GetFeedback();
 
   Motor::MotorCmd cmd{};
-  cmd.mode = Motor::MODE_VELOCITY;
-  cmd.velocity = 30.0f;
+  cmd.mode = Motor::MODE_TORQUE;
+  cmd.torque = 0.5f;
   cmd.reduction_ratio = 1.0f;
-  motor->Control(cmd);
+  motor.Control(cmd);
 }
 ```
 
-## 新电机驱动如何接入
+接入新驱动 `MyMotor`：`class MyMotor : public Motor`，实现全部纯虚函数；在 `Control()` 中按
+`ControlMode` 分发到底层协议，在 `Update()` 中刷新 `Feedback`。上层模块继续使用 `Motor&`，
+无需修改。`Update()` 与 `Control()` 应在固定周期调用。
 
-假设你要新增一个驱动 `MyMotor`，建议流程：
+## 使用
 
-1. `class MyMotor : public Motor`。
-2. 实现全部纯虚接口。
-3. 在 `Control()` 内按 `ControlMode` 分发到底层协议。
-4. 在 `Update()` 内更新并维护 `Feedback`。
-5. 上层模块继续使用 `Motor*`，无需改业务逻辑。
+本库由依赖它的模块自动拉入。单独添加源请求：
 
-## 使用约定
+```sh
+xrobot module add QDU-Robomaster/Motor
+xrobot setup
+```
 
-1. `Update()` 与 `Control()` 建议在固定周期调用。
-2. 控制前先确认 `Enable()` 已执行且反馈在线。
-3. `Feedback::abs_angle` 用于跨圈角度场景，避免直接用原始单圈角。
+库没有实例，不需要 `xrobot instance add`，也不在 `User/xrobot.yaml` 的 `modules:` 中出现。
 
-## 模块信息
-
-1. 代码入口：`Modules/Motor/Motor.hpp`
-2. Required Hardware：None
-3. Constructor Arguments：None
-4. Template Arguments：None
-5. Depends：None
+`xrobot module show .`（在本仓库中）或 `xrobot module show Modules/QDU-Robomaster/Motor`
+（在 BSP 中）打印 manifest。
