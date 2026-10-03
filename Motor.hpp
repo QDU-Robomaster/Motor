@@ -2,11 +2,10 @@
 
 // clang-format off
 /* === MODULE MANIFEST V2 ===
-module_description: Motor reusable library
+module_description: 统一电机控制接口的抽象基类库 / Library of the abstract base class that unifies the motor control interface
 standalone: false
 depends: []
 === END MANIFEST === */
-// clang-format on
 // clang-format on
 
 #include <cstdint>
