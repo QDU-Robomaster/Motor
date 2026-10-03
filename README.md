@@ -62,11 +62,7 @@ virtual ~Motor() = default;
 
 依赖：无。配置参数：无。
 
-`Motor` is a pure virtual interface inherited by the driver classes, and construction is defined by each driver Module. The base class provides a virtual destructor:
-
-```cpp
-virtual ~Motor() = default;
-```
+`Motor` is a pure virtual interface inherited by the driver classes, and construction is defined by each driver Module. The base class provides the virtual destructor shown above.
 
 Dependencies: none. Configuration parameters: none.
 
