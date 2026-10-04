@@ -4,7 +4,7 @@
 
 ## 1. 模块作用 / Purpose
 
-Motor 是库型模块（`standalone: false`）。业务模块只持有 `Motor&` 或 `Motor*`，通过它统一不同电机驱动（例如 `RMMotor`、`DMMotor`）的差异。Motor 统一了三件事：
+Motor 是库型模块（`standalone: false`）。业务模块只持有 `Motor&` 或 `Motor*`，通过它统一不同电机驱动（例如 `RMMotor`、`DMMotor`）的差异。Motor 统一以下三方面：
 
 - 控制命令结构：位置、速度、力矩、电流、MIT。
 - 反馈结构：角度、转速、角速度、扭矩、温度、错误码。
@@ -28,7 +28,7 @@ Motor 是库型模块（`standalone: false`）。业务模块只持有 `Motor&` 
 
 接入新驱动 `MyMotor`：`class MyMotor : public Motor`，实现全部纯虚函数；在 `Control()` 中按 `ControlMode` 分发到底层协议，在 `Update()` 中刷新 `Feedback`。上层模块继续使用 `Motor&`。`Update()` 与 `Control()` 在固定周期调用。
 
-Motor is a library Module (`standalone: false`). Business Modules hold only a `Motor&` or `Motor*`, through which the differences between motor drivers (for example `RMMotor` and `DMMotor`) are unified. Motor unifies three things:
+Motor is a library Module (`standalone: false`). Business Modules hold only a `Motor&` or `Motor*`, through which the differences between motor drivers (for example `RMMotor` and `DMMotor`) are unified. Motor unifies the following three aspects:
 
 - The control command structure: position, velocity, torque, current and MIT.
 - The feedback structure: angle, speed, angular velocity, torque, temperature and error code.
